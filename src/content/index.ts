@@ -1,0 +1,1 @@
+console.info('[spoiler-prevention] content script loaded')
