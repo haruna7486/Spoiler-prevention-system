@@ -107,3 +107,41 @@ label {
   gap: 8px;
   margin-top: 8px;
 }
+
+.keyword-list {
+  display: grid;
+  gap: 6px;
+  padding: 0;
+  margin: 8px 0;
+  list-style: none;
+}
+
+.keyword-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: #f3f4f6;
+}
+
+.keyword-item span {
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.keyword-item button {
+  padding: 4px 8px;
+  font-size: 11px;
+}
+
+.keyword-add-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.keyword-add-row input {
+  margin-top: 0;
+}
