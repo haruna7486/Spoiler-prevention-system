@@ -10,6 +10,7 @@ function App() {
   })
   const [label, setLabel] = useState('')
   const [keywordText, setKeywordText] = useState('')
+  const [newKeywordByGroupId, setNewKeywordByGroupId] = useState<Record<string, string>>({})
   const [errorMessage, setErrorMessage] = useState('')
   const [statusMessage, setStatusMessage] = useState('')
   const [isSaving, setIsSaving] = useState(false)
@@ -55,14 +56,12 @@ function App() {
 
     const normalizedKeywords = rawKeywords.map(normalize)
 
-    const hasEmptyKeyword = normalizedKeywords.some((keyword) => keyword.length === 0)
-    if (hasEmptyKeyword) {
+    if (normalizedKeywords.some((keyword) => keyword.length === 0)) {
       setErrorMessage('空のキーワードは登録できません。')
       return
     }
 
-    const hasDuplicateKeyword = new Set(normalizedKeywords).size !== normalizedKeywords.length
-    if (hasDuplicateKeyword) {
+    if (new Set(normalizedKeywords).size !== normalizedKeywords.length) {
       setErrorMessage('同じキーワードが含まれています。')
       return
     }
@@ -143,6 +142,87 @@ function App() {
     }
   }
 
+  async function handleAddKeyword(groupId: string) {
+    const newKeyword = newKeywordByGroupId[groupId]?.trim() ?? ''
+
+    setErrorMessage('')
+    setStatusMessage('')
+
+    if (!newKeyword) {
+      setErrorMessage('追加するキーワードを入力してください。')
+      return
+    }
+
+    const targetGroup = data.groups.find((group) => group.id === groupId)
+    if (!targetGroup) {
+      setErrorMessage('対象のグループが見つかりません。')
+      return
+    }
+
+    const normalizedNewKeyword = normalize(newKeyword)
+    const hasDuplicateKeyword = targetGroup.keywords.some((keyword) => {
+      return normalize(keyword) === normalizedNewKeyword
+    })
+
+    if (hasDuplicateKeyword) {
+      setErrorMessage('同じキーワードがすでにあります。')
+      return
+    }
+
+    const nextGroups = data.groups.map((group) => {
+      if (group.id !== groupId) {
+        return group
+      }
+
+      return {
+        ...group,
+        keywords: [...group.keywords, newKeyword],
+      }
+    })
+
+    const nextData: StorageData = {
+      version: 1,
+      groups: nextGroups,
+    }
+
+    try {
+      await saveData(nextData)
+      setNewKeywordByGroupId((current) => ({
+        ...current,
+        [groupId]: '',
+      }))
+      setStatusMessage('キーワードを追加しました。')
+    } catch {
+      setErrorMessage('キーワードの追加に失敗しました。')
+    }
+  }
+
+  async function handleDeleteKeyword(groupId: string, keywordToDelete: string) {
+    const nextGroups = data.groups.map((group) => {
+      if (group.id !== groupId) {
+        return group
+      }
+
+      return {
+        ...group,
+        keywords: group.keywords.filter((keyword) => keyword !== keywordToDelete),
+      }
+    })
+
+    const nextData: StorageData = {
+      version: 1,
+      groups: nextGroups,
+    }
+
+    try {
+      await saveData(nextData)
+      setStatusMessage('キーワードを削除しました。')
+      setErrorMessage('')
+    } catch {
+      setErrorMessage('キーワードの削除に失敗しました。')
+    }
+  }
+
   return (
     <main className="popup-page">
       <h1>ネタバレ防止</h1>
@@ -190,6 +270,15 @@ function App() {
               <GroupItem
                 key={group.id}
                 group={group}
+                newKeyword={newKeywordByGroupId[group.id] ?? ''}
+                onNewKeywordChange={(value) => {
+                  setNewKeywordByGroupId((current) => ({
+                    ...current,
+                    [group.id]: value,
+                  }))
+                }}
+                onAddKeyword={handleAddKeyword}
+                onDeleteKeyword={handleDeleteKeyword}
                 onToggle={handleToggleGroup}
                 onDelete={handleDeleteGroup}
               />
@@ -203,24 +292,55 @@ function App() {
 
 type GroupItemProps = {
   group: KeywordGroup
+  newKeyword: string
+  onNewKeywordChange: (value: string) => void
+  onAddKeyword: (groupId: string) => void
+  onDeleteKeyword: (groupId: string, keyword: string) => void
   onToggle: (groupId: string) => void
   onDelete: (groupId: string) => void
 }
 
-function GroupItem({ group, onToggle, onDelete }: GroupItemProps) {
+function GroupItem({
+  group,
+  newKeyword,
+  onNewKeywordChange,
+  onAddKeyword,
+  onDeleteKeyword,
+  onToggle,
+  onDelete,
+}: GroupItemProps) {
   return (
     <li className="group-item">
       <div>
         <strong>{group.label}</strong>
-        <p>{group.keywords.join(', ')}</p>
         <p>{group.enabled ? '有効' : '無効'}</p>
+
+        <ul className="keyword-list">
+          {group.keywords.map((keyword) => (
+            <li key={keyword} className="keyword-item">
+              <span>{keyword}</span>
+              <button onClick={() => onDeleteKeyword(group.id, keyword)}>
+                削除
+              </button>
+            </li>
+          ))}
+        </ul>
+
+        <div className="keyword-add-row">
+          <input
+            value={newKeyword}
+            onChange={(event) => onNewKeywordChange(event.target.value)}
+            placeholder="キーワードを追加"
+          />
+          <button onClick={() => onAddKeyword(group.id)}>追加</button>
+        </div>
       </div>
 
       <div className="button-row">
         <button onClick={() => onToggle(group.id)}>
           {group.enabled ? '無効にする' : '有効にする'}
         </button>
-        <button onClick={() => onDelete(group.id)}>削除</button>
+        <button onClick={() => onDelete(group.id)}>グループ削除</button>
       </div>
     </li>
   )
