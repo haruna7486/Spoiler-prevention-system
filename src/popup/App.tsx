@@ -3,6 +3,24 @@ import { loadStorageData } from '../shared/storage'
 import { normalize } from '../shared/normalize'
 import type { KeywordGroup, StorageData } from '../shared/types'
 
+const suggestionDictionary: Record<string, string[]> = {
+  'w杯': ['スコア', '結果', '決勝', '準決勝', 'ハイライト', '勝利', '敗退'],
+  'ワールドカップ': ['スコア', '結果', '決勝', '準決勝', 'ハイライト', '勝利', '敗退'],
+  'サッカー': ['スコア', 'ゴール', '結果', 'ハイライト', 'PK', '勝利', '敗退'],
+}
+
+function getSuggestedKeywords(inputText: string): string[] {
+  const normalizedInput = normalize(inputText)
+  const suggestions = new Set<string>()
+
+  Object.entries(suggestionDictionary).forEach(([triggerWord, words]) => {
+    if (normalizedInput.includes(normalize(triggerWord))) {
+      words.forEach((word) => suggestions.add(word))
+    }
+  })
+
+  return Array.from(suggestions)
+}
 function App() {
   const [data, setData] = useState<StorageData>({
     version: 1,
@@ -14,6 +32,7 @@ function App() {
   const [errorMessage, setErrorMessage] = useState('')
   const [statusMessage, setStatusMessage] = useState('')
   const [isSaving, setIsSaving] = useState(false)
+  const groupKeywordSuggestions = getSuggestedKeywords(`${label} ${keywordText}`)
 
   useEffect(() => {
     loadStorageData()
@@ -250,6 +269,41 @@ function App() {
             placeholder="例: W杯2026, ワールドカップ, アルゼンチン"
           />
         </label>
+
+        {groupKeywordSuggestions.length > 0 && (
+  <div className="suggestion-area">
+    <p className="suggestion-title">関連キーワード候補</p>
+    <div className="suggestion-list">
+      {groupKeywordSuggestions.map((suggestion) => (
+        <button
+          key={suggestion}
+          type="button"
+          className="suggestion-chip"
+          onClick={() => {
+            const currentKeywords = keywordText
+              .split(',')
+              .map((keyword) => keyword.trim())
+              .filter(Boolean)
+
+            const alreadyExists = currentKeywords.some((keyword) => {
+              return normalize(keyword) === normalize(suggestion)
+            })
+
+            if (alreadyExists) {
+              setErrorMessage('同じキーワードがすでに含まれています。')
+              return
+            }
+
+            setKeywordText([...currentKeywords, suggestion].join(', '))
+            setErrorMessage('')
+          }}
+        >
+          {suggestion}
+        </button>
+      ))}
+    </div>
+  </div>
+)}
 
         <button onClick={handleAddGroup} disabled={isSaving}>
           {isSaving ? '保存中...' : '保存する'}
