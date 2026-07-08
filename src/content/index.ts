@@ -1,7 +1,7 @@
 import { loadStorageData, onStorageChanged } from '../shared/storage'
 import { getActiveKeywords } from './core/matcher'
 import { observeDOM } from './core/observer'
-import { processTitles, processSearchResults, processShorts, processVideoCards, injectStyle } from './sites/youtube/rules'
+import { processTitles, processSearchResults, processShorts, processVideoCards, processShortsCards, injectStyle } from './sites/youtube/rules'
 import type { StorageData } from '../shared/types'
 
 let activeKeywords: string[] = []
@@ -11,6 +11,7 @@ function applyRules(): void {
   processSearchResults(activeKeywords)
   processVideoCards(activeKeywords)
   processShorts(activeKeywords)
+  processShortsCards(activeKeywords)
 }
 
 async function init() {
