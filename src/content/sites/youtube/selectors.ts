@@ -7,3 +7,8 @@ export const THUMBNAIL_IMG = 'img'
 export const SEARCH_CARD = 'ytd-video-renderer'
 export const SEARCH_TITLE = 'a[id="video-title"] yt-formatted-string'
 export const SEARCH_THUMBNAIL = 'ytd-thumbnail img'
+
+// Shorts関連（ホーム画面の「ショート」棚）
+export const SHORTS_SHELF = 'ytd-rich-shelf-renderer'
+export const SHORTS_TITLE = 'h3 a'
+export const SHORTS_THUMBNAIL = 'img'
