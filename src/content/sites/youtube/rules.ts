@@ -6,6 +6,7 @@ const OVERLAY_ATTR = 'data-sp-overlay'
 const BLUR_ATTR = 'data-sp-blurred'
 const PLACEHOLDER_TEXT = '［ネタバレ防止中］'
 const WATCH_LINK_SELECTOR = 'a[href*="/watch?v="]'
+const SHORTS_LINK_SELECTOR = 'a[href*="/shorts/"]'
 
 export function injectStyle(): void {
   if (document.getElementById('sp-style')) return
@@ -153,20 +154,23 @@ export function processShorts(activeKeywords: string[]): void {
   })
 }
 
+// 通常動画は ?v=、ショートは /shorts/ のパス片からIDを取り出す
 function extractVideoId(href: string): string | null {
-  const match = href.match(/[?&]v=([^&]+)/)
-  return match ? match[1] : null
+  const watchMatch = href.match(/[?&]v=([^&]+)/)
+  if (watchMatch) return watchMatch[1]
+  const shortsMatch = href.match(/\/shorts\/([^/?&]+)/)
+  return shortsMatch ? shortsMatch[1] : null
 }
 
 // カード名/クラス名に依存せず、「同じ動画IDへのリンクだけを含む最大の祖先要素」を
 // カードの境界として扱う。特集棚など未知のマークアップでも動画単位の境界を検出できる。
-function findCardRoot(link: HTMLAnchorElement): HTMLElement | null {
+function findCardRoot(link: HTMLAnchorElement, linkSelector: string): HTMLElement | null {
   const videoId = extractVideoId(link.getAttribute('href') ?? '')
   let current: HTMLElement | null = link.parentElement
   let best: HTMLElement | null = null
   let depth = 0
   while (current && current !== document.body && depth < 15) {
-    const hasOtherVideo = Array.from(current.querySelectorAll<HTMLAnchorElement>(WATCH_LINK_SELECTOR)).some(
+    const hasOtherVideo = Array.from(current.querySelectorAll<HTMLAnchorElement>(linkSelector)).some(
       (a) => extractVideoId(a.getAttribute('href') ?? '') !== videoId,
     )
     if (hasOtherVideo) break
@@ -189,14 +193,15 @@ function findTitleEl(card: HTMLElement, link: HTMLAnchorElement): HTMLElement | 
 }
 
 // タグ名・クラス名の変化に左右されない汎用パス。
-// 「/watch?v= へのリンク」+「i.ytimg.com/vi/ のサムネイル画像」というYouTube共通の構造だけを頼りに、
+// 「動画へのリンク」+「i.ytimg.com/vi/ のサムネイル画像」というYouTube共通の構造だけを頼りに、
 // ホーム・検索の通常カードでは拾えない特集棚（例: FIFAワールドカップ特集）も判定する。
-export function processVideoCards(activeKeywords: string[]): void {
-  const links = document.querySelectorAll<HTMLAnchorElement>(WATCH_LINK_SELECTOR)
+// 通常動画（/watch?v=）とショート（/shorts/）の両方でこのロジックを共有する。
+function processCardsByLink(activeKeywords: string[], linkSelector: string): void {
+  const links = document.querySelectorAll<HTMLAnchorElement>(linkSelector)
   const seenCards = new Set<HTMLElement>()
 
   links.forEach((link) => {
-    const card = findCardRoot(link)
+    const card = findCardRoot(link, linkSelector)
     if (!card || seenCards.has(card)) return
     seenCards.add(card)
 
@@ -216,4 +221,13 @@ export function processVideoCards(activeKeywords: string[]): void {
       else if (img) removeThumbOverlay(img)
     }
   })
+}
+
+export function processVideoCards(activeKeywords: string[]): void {
+  processCardsByLink(activeKeywords, WATCH_LINK_SELECTOR)
+}
+
+// ホーム棚に限らず、検索結果やサイドバーなど /shorts/ リンクが現れる場所全般を対象にする
+export function processShortsCards(activeKeywords: string[]): void {
+  processCardsByLink(activeKeywords, SHORTS_LINK_SELECTOR)
 }
