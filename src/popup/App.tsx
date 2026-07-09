@@ -86,6 +86,7 @@ function App() {
   const [errorMessage, setErrorMessage] = useState('')
   const [statusMessage, setStatusMessage] = useState('')
   const [isSaving, setIsSaving] = useState(false)
+  const [isAddSectionOpen, setIsAddSectionOpen] = useState(true)
   const [isGroupsSectionOpen, setIsGroupsSectionOpen] = useState(true)
   const [collapsedGroupIds, setCollapsedGroupIds] = useState<Set<string>>(new Set())
   const [flashGroupId, setFlashGroupId] = useState<string | null>(null)
@@ -315,33 +316,46 @@ function App() {
       <p className="description">YouTubeで見たくない結果や展開につながる言葉を「ブロック対象」として登録します。</p>
 
       <section className="card">
-        <h2>
-          <PlusIcon />
-          ブロック対象を追加
-        </h2>
+        <button
+          className="section-toggle"
+          type="button"
+          aria-expanded={isAddSectionOpen}
+          aria-controls="addWrap"
+          onClick={() => setIsAddSectionOpen((current) => !current)}
+        >
+          <span className="section-toggle-label">
+            <PlusIcon />
+            ブロック対象を追加
+          </span>
+          <ChevronIcon className="chevron" />
+        </button>
 
-        <div className="quick-add-row">
-          <input
-            value={label}
-            onChange={(event) => setLabel(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') {
-                event.preventDefault()
-                handleCreateGroup()
-              }
-            }}
-            placeholder="例: W杯2026"
-            aria-label="ブロック対象の名前"
-          />
-          <button
-            className="btn-primary btn-square"
-            type="button"
-            onClick={handleCreateGroup}
-            disabled={isSaving}
-            aria-label="ブロック対象を作成"
-          >
-            <PlusIcon size={16} />
-          </button>
+        <div id="addWrap" className={`add-form-wrap${isAddSectionOpen ? ' is-open' : ''}`}>
+          <div className="add-form-scroll">
+            <div className="quick-add-row">
+              <input
+                value={label}
+                onChange={(event) => setLabel(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault()
+                    handleCreateGroup()
+                  }
+                }}
+                placeholder="例: W杯2026"
+                aria-label="ブロック対象の名前"
+              />
+              <button
+                className="btn-primary btn-square"
+                type="button"
+                onClick={handleCreateGroup}
+                disabled={isSaving}
+                aria-label="ブロック対象を作成"
+              >
+                <PlusIcon size={16} />
+              </button>
+            </div>
+          </div>
         </div>
 
         {errorMessage && <p className="error">{errorMessage}</p>}
@@ -444,6 +458,7 @@ function GroupItem({
 }: GroupItemProps) {
   const itemRef = useRef<HTMLLIElement>(null)
   const keywordInputRef = useRef<HTMLInputElement>(null)
+  const [isKeywordAreaHovered, setIsKeywordAreaHovered] = useState(false)
 
   useEffect(() => {
     if (isFlashing) {
@@ -512,54 +527,60 @@ function GroupItem({
         <p className="keyword-empty-hint">まだキーワードがありません。下の欄から追加してください。</p>
       )}
 
-      <div className="keyword-add-row">
-        <input
-          ref={keywordInputRef}
-          value={newKeyword}
-          onChange={(event) => onNewKeywordChange(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') {
-              event.preventDefault()
-              onAddKeyword(group.id)
-            }
-          }}
-          placeholder="キーワードを追加（カンマ区切りで複数可）"
-        />
-        <button type="button" onClick={() => onAddKeyword(group.id)} aria-label="キーワードを追加">
-          <PlusIcon size={14} />
-        </button>
-      </div>
-
-      {suggestedKeywords.length > 0 && (
-        <div className="suggestion-area">
-          <p className="suggestion-title">関連キーワード候補</p>
-          <div className="suggestion-list">
-            {suggestedKeywords.map((suggestion) => (
-              <button
-                key={suggestion}
-                type="button"
-                className="suggestion-chip"
-                onClick={() => {
-                  const currentKeywords = newKeyword
-                    .split(',')
-                    .map((keyword) => keyword.trim())
-                    .filter(Boolean)
-
-                  const alreadyExists = currentKeywords.some(
-                    (keyword) => normalize(keyword) === normalize(suggestion),
-                  )
-
-                  if (alreadyExists) return
-
-                  onNewKeywordChange([...currentKeywords, suggestion].join(', '))
-                }}
-              >
-                {suggestion}
-              </button>
-            ))}
-          </div>
+      <div
+        className="keyword-add-area"
+        onMouseEnter={() => setIsKeywordAreaHovered(true)}
+        onMouseLeave={() => setIsKeywordAreaHovered(false)}
+      >
+        <div className="keyword-add-row">
+          <input
+            ref={keywordInputRef}
+            value={newKeyword}
+            onChange={(event) => onNewKeywordChange(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault()
+                onAddKeyword(group.id)
+              }
+            }}
+            placeholder="キーワードを追加（カンマ区切りで複数可）"
+          />
+          <button type="button" onClick={() => onAddKeyword(group.id)} aria-label="キーワードを追加">
+            <PlusIcon size={14} />
+          </button>
         </div>
-      )}
+
+        {isKeywordAreaHovered && suggestedKeywords.length > 0 && (
+          <div className="suggestion-area">
+            <p className="suggestion-title">関連キーワード候補</p>
+            <div className="suggestion-list">
+              {suggestedKeywords.map((suggestion) => (
+                <button
+                  key={suggestion}
+                  type="button"
+                  className="suggestion-chip"
+                  onClick={() => {
+                    const currentKeywords = newKeyword
+                      .split(',')
+                      .map((keyword) => keyword.trim())
+                      .filter(Boolean)
+
+                    const alreadyExists = currentKeywords.some(
+                      (keyword) => normalize(keyword) === normalize(suggestion),
+                    )
+
+                    if (alreadyExists) return
+
+                    onNewKeywordChange([...currentKeywords, suggestion].join(', '))
+                  }}
+                >
+                  {suggestion}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
 
       <div className="button-row">
         <button type="button" className={group.enabled ? 'btn-warn' : 'btn-resume'} onClick={() => onToggle(group.id)}>
