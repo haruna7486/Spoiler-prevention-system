@@ -44,6 +44,38 @@ function ChevronIcon({ className }: { className?: string }) {
   )
 }
 
+const suggestionDictionary: Record<string, string[]> = {
+  'w杯': ['スコア', '結果', '決勝', '準決勝', 'ハイライト', '勝利', '敗退'],
+  'ワールドカップ': ['スコア', '結果', '決勝', '準決勝', 'ハイライト', '勝利', '敗退'],
+  'サッカー': ['スコア', 'ゴール', '結果', 'ハイライト', 'PK', '勝利', '敗退'],
+  'ベスト':['ベスト8', 'ベスト4'],
+  '準決勝': ['決勝', '結果', 'ハイライト'],
+  'アルゼンチン':['メッシ', 'ハットトリック', 'ゴール', '勝利', '敗退'],
+  'メッシ':['得点', 'ゴール', '勝利', '敗退'],
+  '決勝':['結果', 'ハイライト', '優勝'],
+  '優勝':['結果', 'ハイライト','悲願'],
+  'スペイン':['得点', 'ゴール', '勝利', '敗退', 'ヤマル'],
+  'フランス':['エンバペ', 'ゴール', '勝利', '敗退'],
+  'モロッコ':['ハキミ', '勝利', '敗退'],
+  'ノルウェー':['ハーランド', 'ゴール', '勝利', '敗退'],
+  'イングランド':['ベリンガム', 'ケイン', 'ゴール', '勝利', '敗退'],
+  'スイス':['シャキリ', 'ゴール', '勝利', '敗退'],
+  'ベルギー':['ルカク', 'デ・ブライネ', 'ドク', 'トロサール', 'デ・ケテラーレ', 'ティーレマンス', 'ゴール', '勝利', '敗退'],
+}
+
+function getSuggestedKeywords(inputText: string): string[] {
+  const normalizedInput = normalize(inputText)
+  const suggestions = new Set<string>()
+
+  Object.entries(suggestionDictionary).forEach(([triggerWord, words]) => {
+    if (normalizedInput.includes(normalize(triggerWord))) {
+      words.forEach((word) => suggestions.add(word))
+    }
+  })
+
+  return Array.from(suggestions)
+}
+
 function App() {
   const [data, setData] = useState<StorageData>({
     version: 1,
@@ -427,6 +459,9 @@ function GroupItem({
 
   const displayedKeywords = isCollapsed ? group.keywords.slice(0, PEEK_COUNT) : group.keywords
   const hiddenCount = isCollapsed ? Math.max(0, group.keywords.length - PEEK_COUNT) : 0
+  const suggestedKeywords = getSuggestedKeywords(`${group.label} ${newKeyword}`).filter(
+    (suggestion) => !group.keywords.some((keyword) => normalize(keyword) === normalize(suggestion)),
+  )
 
   return (
     <li
@@ -494,6 +529,37 @@ function GroupItem({
           <PlusIcon size={14} />
         </button>
       </div>
+
+      {suggestedKeywords.length > 0 && (
+        <div className="suggestion-area">
+          <p className="suggestion-title">関連キーワード候補</p>
+          <div className="suggestion-list">
+            {suggestedKeywords.map((suggestion) => (
+              <button
+                key={suggestion}
+                type="button"
+                className="suggestion-chip"
+                onClick={() => {
+                  const currentKeywords = newKeyword
+                    .split(',')
+                    .map((keyword) => keyword.trim())
+                    .filter(Boolean)
+
+                  const alreadyExists = currentKeywords.some(
+                    (keyword) => normalize(keyword) === normalize(suggestion),
+                  )
+
+                  if (alreadyExists) return
+
+                  onNewKeywordChange([...currentKeywords, suggestion].join(', '))
+                }}
+              >
+                {suggestion}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="button-row">
         <button type="button" className={group.enabled ? 'btn-warn' : 'btn-resume'} onClick={() => onToggle(group.id)}>
